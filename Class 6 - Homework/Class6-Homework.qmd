@@ -1,0 +1,135 @@
+---
+title: "Homework - Class 6"
+author: "Istarlin (TSS: 200099335)"
+format: pdf
+editor: visual
+---
+
+## First explore the original protein analysis code provided
+>**Q.** Can you improve this analysis code?
+
+```{r}
+library(bio3d)
+
+s1 <- read.pdb("4AKE") # kinase with drug
+s2 <- read.pdb("1AKE") # kinase no drug
+s3 <- read.pdb("1E4Y") # kinase with drug
+
+```
+>## Only want to keep chain A and its associated alpha-carbon atoms
+
+```{r}
+s1.chainA <- trim.pdb(s1, chain = "A", elety = "CA")
+s2.chainA <- trim.pdb(s2, chain = "A", elety = "CA")
+s3.chainA <- trim.pdb(s3, chain = "A", elety = "CA")
+```
+
+>## Next extract the B-factors which depicts atomic displacement in each of the structures. `$atom$b()` selects the B-factor column from each of the trimmed proteins
+
+```{r}
+s1.b <- s1.chainA$atom$b
+s2.b <- s2.chainA$atom$b
+s3.b <- s3.chainA$atom$b
+```
+
+>## Create a line plot for each of the proteins. X-axis is the position and the Y-axis is the B-factor.
+
+```{r}
+plotb3(s1.b, sse = s1.chainA, typ = "l", ylab = "Bfactor")
+plotb3(s2.b, sse = s2.chainA, typ = "l", ylab = "Bfactor")
+plotb3(s3.b, sse = s3.chainA, typ = "l", ylab = "Bfactor")
+```
+
+## Q1. What type of object is returned from the read.pdb() function?
+
+```{r}
+class(s1)
+is.list(s1)
+```
+ The `read.pdb()` function returns the list object of "pdb". This contains information regarding protein structure.
+ 
+## Q2. What does the trim.pdb() function do?
+
+```{r}
+s1.chainA <- trim.pdb(s1, chain = "A", elety = "CA")
+```
+
+  The `trim.pdb()` function creates smaller of the pdb objects which contain only the selected parts of the proteins structure. For example in this line of code it only keeps alpha carbon atoms in chain A.
+  
+##Q3. What input parameter would turn off the marginal black and grey rectangles in the plots and what do they represent in this case?
+
+```{r}
+plotb3(s1.b, sse = NULL, typ = "l", ylab = "Bfactor")
+```
+  The black an gray rectangles showcase the protein's secondary structure. Black represents alpha helices and grey represents beta strands. By setting the sse to NULL, it removes the marginal gray and black rectangles.
+  
+## Q4. What would be a better plot to compare across the different proteins?
+
+```{r}
+matplot( cbind(s1.b, s2.b, s3.b), type = "l", col = c("blue", "red", "green"), lty = 1, xlab = "Residue", ylab = "B-factor")
+
+legend(
+  "topright",
+  legend = c("4AKE", "1AKE", "1E4Y"),
+  col = c("blue", "red", "green"),
+  lty = 1
+)
+```
+ A overlaid line plot with different colors to represent each protein allows for an easier comparison between the B-factor profiles. 
+ 
+## Q5. Which proteins are more similar to each other in their B-factor trends. How could you quantify this? HINT: try the rbind(), dist() and hclust() functions together with a resulting dendrogram plot. Look up the documentation to see what each of these functions does.
+
+```{r}
+# first put each of the protein' B-factor's into seperate rows to make it easier to visualize.
+
+b_factors <- rbind(
+  "4AKE" = s1.b,
+  "1AKE" = s2.b,
+  "1E4Y" = s3.b)
+
+## this is to calcualte the distance between the profiles
+
+distances <- dist(b_factors)
+distances 
+
+## using the hint provided cluster the proteins together and construct a dendrogram
+
+hc <- hclust(distances)
+plot(hc, main = "Comparison of B-factor profiles",
+     xlab = "", sub = "")
+
+```
+
+  The proteins most similar to each other in their B-factor profiles is 1AKE and 1E4Y. This is because they share the smallest distance at 255.36.
+  
+## Q6. How would you generalize the original code above to work with any set of input protein structures?
+
+```{r}
+library(bio3d)
+
+##combine all the steps and create a pdb ID and A chain. Allows for the code to read the structure and select alpha carbons and plot the B-factors. The output is a B-factor plot and their values.
+
+protein_bfactor <- function(pdb_id, chain = "A") {
+  protein <- read.pdb(pdb_id)
+  selected <- trim.pdb(protein, chain = chain, elety = "CA")
+
+  b_factors <- selected$atom$b
+
+  plotb3(b_factors,
+         sse = selected,
+         typ = "l",
+         xlab = "Residue",
+         ylab = "B-factor",
+         main = paste("B-factor profile:", pdb_id))
+
+  return(invisible(b_factors))
+}
+```
+
+```{r}
+protein_bfactor("4AKE")
+protein_bfactor("1AKE")
+protein_bfactor("1E4Y")
+```
+
+  The function takes the argument PDB ID and chain ID, slects from the alpha-carbon atoms, plots the B-factors, and returns the values invisibly so they are saved for further studies. The second chunk of code `protein_bfactor("4AKE")` is used to produce the images and by reusing the functions it allows the user to avoid repition within the code.
